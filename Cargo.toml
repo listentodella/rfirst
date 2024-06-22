@@ -1,6 +1,6 @@
 [workspace]
 members = [
   "httpie"
-, "thumbor"]
+, "queryer", "thumbor"]
 
 resolver = "2"

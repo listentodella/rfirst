@@ -1,0 +1,32 @@
+[package]
+name = "queryer"
+version = "0.1.0"
+edition = "2021"
+
+#它会在 examples 目录下寻找 dialect.rs 文件
+[[example]]
+name = "dialect"
+
+[dependencies]
+# 错误处理，其实对于库我们应该用 thiserror，但这里简单起见就不节外生枝了
+anyhow = "1"
+# 允许 trait 里有 async fn
+async-trait = "0.1"
+# SQL 解析器
+sqlparser = "0.10"
+# DataFrame 库
+polars = { version = "0.15", features = ["json", "lazy"] }
+# 我们的老朋友 HTTP 客户端
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
+# 我们的老朋友异步库，我们这里需要异步文件处理
+tokio = { version = "1", features = ["fs"]}
+# 日志处理[dev-dependencies]
+tracing = "0.1"
+
+
+[dev-dependencies]
+# 日志处理
+tracing-subscriber = "0.2"
+# 在 example 下我们需要更多的 tokio feature
+tokio = { version = "1", features = ["full"]}
+

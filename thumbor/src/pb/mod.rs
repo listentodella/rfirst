@@ -79,7 +79,7 @@ impl Spec {
         }
     }
 
-    pub fn new_filter(filter: resize::SampleFilter) -> Self {
+    pub fn new_filter(filter: filter::Filter) -> Self {
         Self {
             data: Some(spec::Data::Filter(Filter {
                 filter: filter as i32,
@@ -96,7 +96,6 @@ impl Spec {
 
 #[cfg(test)]
 mod tests {
-    use photon_rs::filters::filter;
 
     use super::*;
     use std::borrow::Borrow;

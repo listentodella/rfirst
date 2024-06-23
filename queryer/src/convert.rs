@@ -229,7 +229,7 @@ impl TryFrom<Value> for LiteralValue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::TyrDialect;
+    use crate::DiyDialect;
     use sqlparser::parser::Parser;
 
     #[test]

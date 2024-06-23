@@ -1,6 +1,6 @@
 [workspace]
 members = [
   "httpie"
-, "lifetime", "multi_owner", "queryer", "thumbor"]
+, "lifetime", "memory", "multi_owner", "queryer", "thumbor"]
 
 resolver = "2"

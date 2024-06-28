@@ -39,6 +39,12 @@ path = "src/iter.rs"
 name = "iter_ext"
 path = "src/iter_ext.rs"
 
+
+[[bin]]
+name = "window_count"
+path = "src/window_count.rs"
+
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

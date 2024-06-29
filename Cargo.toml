@@ -1,5 +1,5 @@
 [workspace]
-members = [ "data_structure",
+members = [ "data_structure", "hash_table",
   "httpie"
 , "lifetime", "memory", "multi_owner", "queryer", "smart_pointers", "sys_traits", "thumbor", "traits", "type_system"]
 

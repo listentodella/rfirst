@@ -28,6 +28,10 @@ path = "src/hashmap3.rs"
 name = "btreemap1"
 path = "src/btreemap1.rs"
 
+[[bin]]
+name = "btreemap2"
+path = "src/btreemap2.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

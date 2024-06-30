@@ -19,7 +19,7 @@ pub struct Service<Store = MemTable> {
 }
 
 impl<Store> Service<Store> {
-    fn clone(&self) -> Self {
+    pub fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
         }

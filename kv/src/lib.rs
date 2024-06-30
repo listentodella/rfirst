@@ -3,3 +3,6 @@ pub use pb::abi::*;
 
 mod error;
 pub use error::KvError;
+
+mod storage;
+pub use storage::*;

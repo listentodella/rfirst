@@ -37,7 +37,14 @@ fn main2() {
     println!("c1 call once: {:?}", c("qiao".into()));
     println!("c1 call twice: {:?}", c("bonjour".into()));
 
+    // 注意这里的传参是&c, 而不是c本身, 有两种解释:
+    // 1. 传参是&, 闭包自身所有权未转移, 所以可以被多次调用
+    // 2. call_once的参数是 impl FnOnce, 但并不是只有 FnOnce 实现了它, 此时是以Fn的方法调用的
+    println!("result: {:?}", call_once("hi".into(), &c));
+    let result = c("hi".to_string());
+
     // 然而一旦它被当成 FnOnce 被调用，就无法被再次调用
+    // 需要注意的是, c这里的传参是本体, 而不是引用,否则依旧可以多次调用c
     println!("result: {:?}", call_once("hi".into(), c));
 
     // 无法再次调用

@@ -36,33 +36,6 @@ mod tests {
     use super::*;
     use crate::command_request::RequestData;
 
-    // 测试成功返回的结果
-    fn assert_rsp_ok(mut rsp: CommandResponse, values: &[Value], pairs: &[Kvpair]) {
-        rsp.pairs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        assert_eq!(rsp.status, 200);
-        assert_eq!(rsp.message, "");
-        assert_eq!(rsp.pairs, pairs);
-        assert_eq!(rsp.values, values);
-    }
-
-    // 测试失败返回的结果
-    fn assert_rsp_err(rsp: CommandResponse, code: u32, msg: &str) {
-        assert_eq!(rsp.status, code);
-        assert!(rsp.message.contains(msg));
-        assert_eq!(rsp.pairs, &[]);
-        assert_eq!(rsp.values, &[]);
-    }
-
-    // 从 `Request` 中得到的 `Response`, 目前处理 `HSET`/`HGET`/`HGETALL`命令
-    fn dispatch(cmd: CommandRequest, store: &impl Storage) -> CommandResponse {
-        match cmd.request_data.unwrap() {
-            RequestData::Hset(v) => v.execute(store),
-            RequestData::Hget(v) => v.execute(store),
-            RequestData::Hgetall(v) => v.execute(store),
-            _ => todo!(),
-        }
-    }
-
     #[test]
     fn hset_should_work() {
         let store = MemTable::new();

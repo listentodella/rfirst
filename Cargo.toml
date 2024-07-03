@@ -1,6 +1,6 @@
 [workspace]
 members = [ "closure", "data_structure", "error_handling", "hash_table",
   "httpie"
-, "kv", "lifetime", "memory", "multi_owner", "queryer", "smart_pointers", "sys_traits", "thumbor", "traits", "type_system"]
+, "kv", "lifetime", "memory", "multi_owner", "queryer", "rgrep", "smart_pointers", "sys_traits", "thumbor", "traits", "type_system"]
 
 resolver = "2"

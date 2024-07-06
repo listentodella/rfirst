@@ -15,7 +15,7 @@ pub struct Shell<'a, 'b> {
 }
 
 impl<'a, 'b> Shell<'a, 'b> {
-    fn new(cmd: &'a str, args: &'b [&'a str]) -> Self {
+    pub fn new(cmd: &'a str, args: &'b [&'a str]) -> Self {
         Self { cmd, args }
     }
 }

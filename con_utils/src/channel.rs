@@ -119,7 +119,14 @@ impl<T> Clone for Sender<T> {
 /// Drop sender
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
-        self.shared.senders.fetch_sub(1, Ordering::AcqRel);
+        let exist = self.shared.senders.fetch_sub(1, Ordering::AcqRel);
+        // 然而如果sender都不在了,而接收方全部是处于wait状态
+        // 那么接收者无人唤醒,就会一直阻塞了!
+        if exist <= 1 {
+            // 其实只有一个recv, notify_one 和 all 的效果是一样的
+            //self.shared.available.notify_one();
+            self.shared.available.notify_all();
+        }
     }
 }
 
@@ -149,8 +156,8 @@ impl<T> Default for Shared<T> {
         Self {
             queue: Mutex::new(VecDeque::with_capacity(INITAL_SIZE)),
             available: Condvar::new(),
-            senders: AtomicUsize::new(0),
-            receivers: AtomicUsize::new(0),
+            senders: AtomicUsize::new(1),
+            receivers: AtomicUsize::new(1),
         }
     }
 }
@@ -245,13 +252,14 @@ mod tests {
         // sender即用即抛
         for mut sender in senders {
             thread::spawn(move || {
-                sender.send("hello").unwrap();
+                sender.send("hello".to_string()).unwrap();
                 // sender 再次被丢弃
             })
             .join()
             .unwrap();
         }
-        // 虽然没有sender了,接收者依然可以接受已经在队列里的数据
+
+        // 理论上即便没有sender,接收者依然可以接受已经在队列里的数据
         for _ in 0..total {
             r.recv().unwrap();
         }

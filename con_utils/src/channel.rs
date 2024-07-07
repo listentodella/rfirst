@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use std::{
     collections::VecDeque,
     fmt::Result,
@@ -43,11 +43,34 @@ impl<T> Shared<T> {
 
 impl<T> Receiver<T> {
     pub fn recv(&mut self) -> Result<T> {
-        todo!()
+        // 拿到队列的锁
+        let mut inner = self.shared.queue.lock().unwrap();
+        // 这里的loop主要是针对还有Sender但没有数据的情况
+        // 此时进入wait后如果被唤醒,应该重新去匹配模式
+        loop {
+            match inner.pop_front() {
+                // 读到数据返回,锁被释放
+                Some(t) => return Ok(t),
+                // 读不到数据并且也没有生产者了,释放锁并返回错误
+                None if self.total_senders() == 0 => return Err(anyhow!("no more senders!")),
+                // 读不到数据,把锁交给Condvar,它会释放锁并挂起线程等待
+                // 等到通知后,它会再获取锁,得到一个MutexGuard
+                None => {
+                    // 当Condvar被唤醒后会返回MutexGuard
+                    // 我们可以loop回去拿数据
+                    // 这就是为什么Condvar要在loop里使用
+                    inner = self
+                        .shared
+                        .available
+                        .wait(inner)
+                        .map_err(|_| anyhow!("lock poisoned!"))?;
+                }
+            }
+        }
     }
 
     pub fn total_senders(&self) -> usize {
-        todo!()
+        self.shared.senders.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 
@@ -73,9 +96,10 @@ impl<T> Drop for Sender<T> {
     }
 }
 
+// 消费者离开时, 减少 receivers 的计数
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
-        todo!()
+        self.shared.receivers.fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
     }
 }
 

@@ -97,11 +97,13 @@ impl<T> Receiver<T> {
     }
 }
 
+// 要考虑到用户可能会尝试用iterator的方式调用Receiver
 impl<T> Iterator for Receiver<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        // ok()可以将Result<T>转换为Option<T>
+        self.recv().ok()
     }
 }
 

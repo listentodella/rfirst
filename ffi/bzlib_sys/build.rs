@@ -1,4 +1,5 @@
-use bindgen::CargoCallbacks;
+// 这是对于系统库的, 如果是自己实现的, 有可能需要用额外的命令去编译
+// 参考:https://course.rs/cargo/reference/build-script/examples.html
 
 fn main() {
     // build.rs 可以通过 `println!` 的输出内容,与cargo进行通信
@@ -13,7 +14,7 @@ fn main() {
     // 配置bindgen, 并生成 Bindings 结构
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
-        .parse_callbacks(Box::new(CargoCallbacks::new()))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("unable to generate bindings");
 

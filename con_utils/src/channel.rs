@@ -159,5 +159,135 @@ impl<T> Default for Shared<T> {
 mod tests {
     use super::*;
     use std::{thread, time::Duration};
-    // 先省略test case
+
+    #[test]
+    /// case1:Sender可以产生数据,Recv可以消费数据
+    fn channel_should_work() {
+        let (mut s, mut r) = unbounded();
+        s.send("hello world!".to_string()).unwrap();
+        let msg = r.recv().unwrap();
+        assert_eq!(msg, "hello world!");
+    }
+
+    #[test]
+    /// case2:支持MPSC
+    fn mp_should_work() {
+        let (mut s, mut r) = unbounded();
+        let mut s1 = s.clone();
+        let mut s2 = s.clone();
+        let t = thread::spawn(move || {
+            s.send(1).unwrap();
+        });
+        let t1 = thread::spawn(move || {
+            s1.send(2).unwrap();
+        });
+        let t2 = thread::spawn(move || {
+            s2.send(3).unwrap();
+        });
+
+        for handle in [t, t1, t2] {
+            handle.join().unwrap();
+        }
+
+        let mut ret = [r.recv().unwrap(), r.recv().unwrap(), r.recv().unwrap()];
+        //由于数据到达的顺序不确定,所以排序后再比较
+        ret.sort_unstable();
+        assert_eq!(ret, [1, 2, 3]);
+    }
+
+    #[test]
+    #[allow(clippy::all)]
+    /// case3:Recv可能被阻塞(为空时)
+    /// 可以通过检测"线程是否退出"来间接判断线程是否被阻塞
+    fn receiver_should_be_blocked_when_nothing_to_read() {
+        let (mut s, r) = unbounded();
+        let mut s1 = s.clone();
+        thread::spawn(move || {
+            for (idx, i) in r.into_iter().enumerate() {
+                // 如果读到数据,确保它和发送的数据一致
+                assert_eq!(idx, i)
+            }
+            // 读不到数据应该休眠,所以执行不到这一句,如果执行到说明逻辑出错
+            assert!(false)
+        });
+
+        thread::spawn(move || {
+            for i in 0..100usize {
+                s.send(i).unwrap();
+            }
+            //防止所有sender都离开
+            loop {}
+        });
+
+        // 1ms足以让消费者发送100个消息, 消费者消费完100个消息并阻塞
+        thread::sleep(Duration::from_millis(1));
+
+        // 再次发送数据,唤醒消费者
+        for i in 100..200usize {
+            s1.send(i).unwrap();
+        }
+
+        // 留点时间让 receiver 处理
+        thread::sleep(Duration::from_millis(1));
+
+        // 如果receiver被正常唤醒处理,那么队列里的数据会都被读完
+        assert_eq!(s1.total_queued_items(), 0);
+    }
+
+    #[test]
+    /// case4:Recv需要知道另一端没有Sender的情况
+    fn last_sender_drop_should_error_when_receive() {
+        let (s, mut r) = unbounded();
+        let s1 = s.clone();
+        let senders = [s, s1];
+        let total = senders.len();
+
+        // sender即用即抛
+        for mut sender in senders {
+            thread::spawn(move || {
+                sender.send("hello").unwrap();
+                // sender 再次被丢弃
+            })
+            .join()
+            .unwrap();
+        }
+        // 虽然没有sender了,接收者依然可以接受已经在队列里的数据
+        for _ in 0..total {
+            r.recv().unwrap();
+        }
+
+        // 然而,尝试读取更多数据需要出错
+        assert!(r.recv().is_err())
+    }
+
+    #[test]
+    /// case5:Sender需要知道另一端没有Recv的情况
+    fn receiver_drop_should_error_when_send() {
+        let (mut s1, mut s2) = {
+            let (s, _) = unbounded();
+            let s1 = s.clone();
+            (s1, s)
+        };
+        assert!(s1.send(1).is_err());
+        assert!(s2.send(1).is_err());
+    }
+
+    #[test]
+    fn receiver_should_be_notified_when_all_senders_exit() {
+        let (s, mut r) = unbounded::<usize>();
+        // 用于两个线程同步
+        let (mut sender, mut receiver) = unbounded();
+        let t1 = thread::spawn(move || {
+            // 保证 r.recv()先于t2的drop执行
+            sender.send(0).unwrap();
+            assert!(r.recv().is_err());
+        });
+
+        thread::spawn(move || {
+            receiver.recv().unwrap();
+            drop(s);
+        });
+
+        t1.join().unwrap();
+    }
 }

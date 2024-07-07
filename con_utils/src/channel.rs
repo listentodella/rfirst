@@ -1,7 +1,6 @@
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Result};
 use std::{
     collections::VecDeque,
-    fmt::Result,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Condvar, Mutex,
@@ -29,7 +28,7 @@ pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
 }
 
-impl<T> Shared<T> {
+impl<T> Sender<T> {
     /// 生产者写入一个数据
     pub fn send(&mut self, t: T) -> Result<()> {
         // 如果没有消费者了,写入时出错
@@ -39,7 +38,7 @@ impl<T> Shared<T> {
 
         // 加锁,访问 VecDeque, 压入数据,然后立刻释放锁
         let was_empty = {
-            let mut inner = self.queue.lock().unwrap();
+            let mut inner = self.shared.queue.lock().unwrap();
             let is_empty = inner.is_empty();
             inner.push_back(t);
             is_empty
@@ -48,7 +47,7 @@ impl<T> Shared<T> {
         // 通知任意一个被挂起等待的消费者有数据
         // 前提是此前队列为空
         if was_empty {
-            self.available.notify_one();
+            self.shared.available.notify_one();
         }
 
         Ok(())
@@ -56,11 +55,11 @@ impl<T> Shared<T> {
 
     pub fn total_receivers(&self) -> usize {
         // 这里使用 SeqCst, 保证所有线程看到同样顺序的对recivers的操作
-        self.shared.recvers.load(Ordering::SeqCst)
+        self.shared.receivers.load(Ordering::SeqCst)
     }
 
     pub fn total_queued_items(&self) -> usize {
-        self.queue.lock().unwrap().len()
+        self.shared.queue.lock().unwrap().len()
     }
 }
 

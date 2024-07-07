@@ -81,7 +81,27 @@ impl<T> Drop for Receiver<T> {
 
 /// 创建一个 unbounded channel
 pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
-    todo!()
+    let shared = Shared::default();
+    let shared = Arc::new(shared);
+
+    (
+        Sender {
+            shared: shared.clone(),
+        },
+        Receiver { shared },
+    )
+}
+
+const INITAL_SIZE: usize = 32;
+impl<T> Default for Shared<T> {
+    fn default() -> Self {
+        Self {
+            queue: Mutex::new(VecDeque::with_capacity(INITAL_SIZE)),
+            available: Condvar::new(),
+            senders: AtomicUsize::new(0),
+            receivers: AtomicUsize::new(0),
+        }
+    }
 }
 
 #[cfg(test)]

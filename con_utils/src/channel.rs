@@ -2,7 +2,10 @@ use anyhow::{Ok, Result};
 use std::{
     collections::VecDeque,
     fmt::Result,
-    sync::{atomic::AtomicUsize, Arc, Condvar, Mutex},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Condvar, Mutex,
+    },
 };
 
 /// VecDeque 用于存储消息, 并且可自动扩容
@@ -29,15 +32,35 @@ pub struct Receiver<T> {
 impl<T> Shared<T> {
     /// 生产者写入一个数据
     pub fn send(&mut self, t: T) -> Result<()> {
-        todo!()
+        // 如果没有消费者了,写入时出错
+        if self.total_receivers() == 0 {
+            return Err(anyhow!("no more receivers!"));
+        }
+
+        // 加锁,访问 VecDeque, 压入数据,然后立刻释放锁
+        let was_empty = {
+            let mut inner = self.queue.lock().unwrap();
+            let is_empty = inner.is_empty();
+            inner.push_back(t);
+            is_empty
+        };
+
+        // 通知任意一个被挂起等待的消费者有数据
+        // 前提是此前队列为空
+        if was_empty {
+            self.available.notify_one();
+        }
+
+        Ok(())
     }
 
     pub fn total_receivers(&self) -> usize {
-        todo!()
+        // 这里使用 SeqCst, 保证所有线程看到同样顺序的对recivers的操作
+        self.shared.recvers.load(Ordering::SeqCst)
     }
 
     pub fn total_queued_items(&self) -> usize {
-        todo!()
+        self.queue.lock().unwrap().len()
     }
 }
 
@@ -70,7 +93,7 @@ impl<T> Receiver<T> {
     }
 
     pub fn total_senders(&self) -> usize {
-        self.shared.senders.load(std::sync::atomic::Ordering::SeqCst)
+        self.shared.senders.load(Ordering::SeqCst)
     }
 }
 
@@ -82,24 +105,27 @@ impl<T> Iterator for Receiver<T> {
     }
 }
 
-/// 克隆 sender
+/// 因为是mpsc,支持多个生产者,所以要允许它clone
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
-        todo!()
+        self.shared.senders.fetch_add(1, Ordering::AcqRel);
+        Self {
+            shared: self.shared.clone(),
+        }
     }
 }
 
 /// Drop sender
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
-        todo!()
+        self.shared.senders.fetch_sub(1, Ordering::AcqRel);
     }
 }
 
 // 消费者离开时, 减少 receivers 的计数
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
-        self.shared.receivers.fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
+        self.shared.receivers.fetch_sub(1, Ordering::AcqRel);
     }
 }
 

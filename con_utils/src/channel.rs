@@ -26,6 +26,7 @@ pub struct Sender<T> {
 /// Receiver
 pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
+    cache: VecDeque<T>,
 }
 
 impl<T> Sender<T> {
@@ -65,6 +66,16 @@ impl<T> Sender<T> {
 
 impl<T> Receiver<T> {
     pub fn recv(&mut self) -> Result<T> {
+        // 先尝试从cache中读取,如果有数据,直接返回
+        // 如果没有数据,要么cache为一开始的空,要么已经被人读光了
+        // 此时就需要从原始的queue中读取数据了
+        // pop_front()一次只能读取一笔数据,因此只要适当累积
+        // 消费者就能高效地从cache中无锁读取
+        // 生产者还是依旧会有锁写入,但竞争频率会减少
+        if let Some(t) = self.cache.pop_front() {
+            return Ok(t);
+        }
+
         // 拿到队列的锁
         let mut inner = self.shared.queue.lock().unwrap();
         // 这里的loop主要是针对还有Sender但没有数据的情况
@@ -72,7 +83,15 @@ impl<T> Receiver<T> {
         loop {
             match inner.pop_front() {
                 // 读到数据返回,锁被释放
-                Some(t) => return Ok(t),
+                Some(t) => {
+                    // 如果当前队列中还有数据,那么就把消费者自身缓存的队列(空)和共享队列swap一下
+                    // 这样之后再读取,就可以从 self.queue 中无锁读取
+                    if !inner.is_empty() {
+                        // swap的效率很高,交换的是指针,而没有对数据进行交换
+                        std::mem::swap(&mut self.cache, &mut inner);
+                    }
+                    return Ok(t);
+                }
                 // 读不到数据并且也没有生产者了,释放锁并返回错误
                 None if self.total_senders() == 0 => return Err(anyhow!("no more senders!")),
                 // 读不到数据,把锁交给Condvar,它会释放锁并挂起线程等待
@@ -146,7 +165,10 @@ pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
         Sender {
             shared: shared.clone(),
         },
-        Receiver { shared },
+        Receiver {
+            shared,
+            cache: VecDeque::with_capacity(INITAL_SIZE),
+        },
     )
 }
 
@@ -287,6 +309,11 @@ mod tests {
         let (mut sender, mut receiver) = unbounded();
         let t1 = thread::spawn(move || {
             // 保证 r.recv()先于t2的drop执行
+            // 如果t2先执行,那么也只能在t2的receiver.recv()处阻塞等待
+            // t2想要继续执行就必须等待此处的sender.send()
+            // 如果t1先执行,那么sender本就在t2的recv之前执行
+
+            // TODO:尽管是如此设定,但recv唤醒处理,就一定赶不上吗?
             sender.send(0).unwrap();
             assert!(r.recv().is_err());
         });

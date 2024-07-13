@@ -12,4 +12,4 @@ tokio = { version = "1.38.0", features = ["full"] }
 tokio-util = { version = "0.7.11", features = ["compat", "codec"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-yamux = "0.13.3"
+yamux = "0.9"

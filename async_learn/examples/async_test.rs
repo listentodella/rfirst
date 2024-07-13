@@ -1,3 +1,7 @@
+// 本例中同时使用了多种async runtine
+// 实际项目中不建议混用,可能会造成性能下降甚至莫名其妙的bug
+
+// 这是futures库的executor
 use futures::executor::block_on;
 use std::future::Future;
 
@@ -15,6 +19,7 @@ fn say_hello2<'fut>(name: &'fut str) -> impl Future<Output = usize> + 'fut {
     }
 }
 
+// 该宏隐含引入了tokio的executor
 #[tokio::main]
 async fn main() {
     let name1 = "Leo".to_string();

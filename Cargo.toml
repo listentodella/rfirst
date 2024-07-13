@@ -1,5 +1,5 @@
 [workspace]
-members = [ "advanced_generics", "advanced_trait_objects", "async_learn", "closure", "con_utils", "concurrency", "data_structure", "error_handling", "ffi/bzlib_sys", "ffi/ffi", "ffi/ffi_math", "hash_table",
+members = [ "advanced_generics", "advanced_trait_objects", "async_internals", "async_learn", "closure", "con_utils", "concurrency", "data_structure", "error_handling", "ffi/bzlib_sys", "ffi/ffi", "ffi/ffi_math", "hash_table",
   "httpie"
 , "kv", "lifetime", "memory", "multi_owner", "queryer", "rgrep", "smart_pointers", "sys_traits", "thumbor", "traits", "type_system", "unsafe_rust"]
 

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
+name = "rawpointer"
+path = "src/rawpointer.rs"
+
+[[bin]]
 name = "box"
 path = "src/box.rs"
 
